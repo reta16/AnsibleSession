@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/www/html;
+    index index.html;
+    server_name _;
+
+    # Hide the nginx version and tag every response
+    server_tokens off;
+    add_header X-Managed-By "Ansible" always;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

@@ -1,0 +1,5 @@
+# Default values for the nginx role.
+# Defaults have the LOWEST priority: group_vars and host_vars override them.
+site_title: "Hello from the nginx role"
+site_owner: "Unknown"
+site_message: "Deployed with Ansible"

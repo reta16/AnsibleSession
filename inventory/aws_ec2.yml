@@ -1,0 +1,33 @@
+# Dynamic inventory: asks AWS which servers exist, instead of a hand-written list.
+# The file name MUST end in aws_ec2.yml (or aws_ec2.yaml) for Ansible to use this plugin.
+#
+# Try it:
+#   ansible-inventory -i inventory/aws_ec2.yml --graph
+#   ansible -i inventory/aws_ec2.yml web -m ping
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - ap-southeast-1
+
+# Only our class servers, and only running ones
+filters:
+  tag:Project: session6
+  instance-state-name: running
+
+# Name hosts by their Name tag (web1, web2) instead of long AWS DNS names
+hostnames:
+  - tag:Name
+
+# Connect using the public IP
+compose:
+  ansible_host: public_ip_address
+
+# Put servers tagged Role=web into the 'web' group, the same group name as hosts.ini,
+# so inventory/group_vars/web.yml applies to both inventories.
+groups:
+  web: tags.Role == 'web'
+
+# Also create a group per tag value automatically, e.g. role_web
+keyed_groups:
+  - key: tags.Role
+    prefix: role

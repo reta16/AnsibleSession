@@ -1,0 +1,12 @@
+---
+# Extra A: the same job as our nginx role, using a popular community role.
+# Install it first:  ansible-galaxy install -r extras/requirements.yml -p extras/galaxy_roles
+- name: Nginx via a Galaxy role
+  hosts: web
+  become: true
+
+  vars:
+    nginx_remove_default_vhost: false
+
+  roles:
+    - role: galaxy_roles/geerlingguy.nginx

@@ -1,0 +1,10 @@
+# Variables for every host in the 'web' group
+site_title: "Session 6 Ansible"
+site_owner: "Your Name"
+site_message: "Deployed with Ansible"
+
+# Activity 2: used by the loop in webserver.yml
+extra_packages:
+  - curl
+  - htop
+  - tree

@@ -1,0 +1,15 @@
+---
+# Activity 3 solution: the same result as Activity 2, organised into roles,
+# plus a security baseline.
+#
+# Run:   ansible-playbook site.yml --ask-vault-pass
+# Only one role:   ansible-playbook site.yml --ask-vault-pass --tags nginx
+- name: Configure web servers
+  hosts: web
+  become: true
+
+  roles:
+    - role: baseline
+      tags: baseline
+    - role: nginx
+      tags: nginx

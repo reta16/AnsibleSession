@@ -1,0 +1,19 @@
+---
+# Broken playbook 4: should change an nginx setting and reload nginx
+- name: Tune nginx
+  hosts: web
+  become: true
+
+  tasks:
+    - name: Hide the nginx version number
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: '^\s*#?\s*server_tokens'
+        line: "        server_tokens off;"
+      notify: reload nginx
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

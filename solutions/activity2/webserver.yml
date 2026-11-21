@@ -1,0 +1,56 @@
+---
+# Activity 2 solution: configure nginx on the web servers
+# Run:   ansible-playbook webserver.yml
+# Check: ansible-playbook webserver.yml --check --diff
+- name: Configure web servers
+  hosts: web
+  become: true
+
+  tasks:
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install extra packages (loop)
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ extra_packages }}"
+
+    - name: Deploy the homepage from a template
+      ansible.builtin.template:
+        src: index.html.j2
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: "0644"
+
+    # "You do" challenge: custom nginx site config + handler
+    - name: Deploy nginx site config
+      ansible.builtin.template:
+        src: default-site.conf.j2
+        dest: /etc/nginx/sites-available/default
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Make sure nginx is running and starts on boot
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Show the OS version (conditional)
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} runs Ubuntu {{ ansible_facts['distribution_version'] }}"
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

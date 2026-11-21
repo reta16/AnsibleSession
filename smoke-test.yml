@@ -1,0 +1,28 @@
+---
+# Activity 4 smoke test: after deploying, check that every web server
+# actually serves the Ansible-managed page over HTTP.
+#
+# Run:  ansible-playbook smoke-test.yml               (static inventory)
+#       ansible-playbook -i inventory/aws_ec2.yml smoke-test.yml
+- name: Smoke test the web servers
+  hosts: web
+  gather_facts: false
+
+  tasks:
+    - name: Fetch the homepage (from the machine running Ansible)
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}/"
+        return_content: true
+        status_code: 200
+      register: page
+      delegate_to: localhost
+      retries: 5
+      delay: 3
+      until: page.status == 200
+
+    - name: Check it is the page Ansible deployed
+      ansible.builtin.assert:
+        that:
+          - "'Managed by Ansible' in page.content"
+        success_msg: "{{ inventory_hostname }} OK - http://{{ ansible_host }}/"
+        fail_msg: "{{ inventory_hostname }} is serving the wrong page"

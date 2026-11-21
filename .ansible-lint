@@ -1,0 +1,15 @@
+---
+# ansible-lint settings
+profile: basic
+offline: true
+
+exclude_paths:
+  - broken/        # deliberately broken, for the troubleshooting exercise
+  - solutions/     # reference copies
+  - extras/
+  - .git/
+
+skip_list:
+  # The nginx role reads the shared site_* variables from group_vars,
+  # so they intentionally don't carry an nginx_ prefix.
+  - var-naming[no-role-prefix]

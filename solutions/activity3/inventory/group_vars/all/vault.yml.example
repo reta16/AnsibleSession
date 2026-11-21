@@ -1,0 +1,10 @@
+# Activity 3 Vault: this is what goes INSIDE the encrypted file.
+# Don't copy this file as-is. Create the real one encrypted:
+#
+#   ansible-vault create inventory/group_vars/all/vault.yml
+#
+# (it asks you to choose a vault password, then opens an editor - paste the
+#  line below, save and close). The encrypted vault.yml is safe to commit.
+#
+# Convention: prefix secret variables with vault_ so you can tell where they come from.
+vault_app_api_key: "sk-demo-change-me-123456"

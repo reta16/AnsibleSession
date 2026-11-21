@@ -1,0 +1,5 @@
+# Variables for every host in the 'web' group.
+# Activity 1: change site_owner to your name.
+site_title: "Session 6 Ansible"
+site_owner: "Your Name"
+site_message: "Deployed with Ansible"

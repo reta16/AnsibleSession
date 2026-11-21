@@ -1,0 +1,39 @@
+# Two containers that stand in for the EC2 servers web1 and web2.
+# Use up.sh and down.sh rather than calling docker compose directly
+# (up.sh builds the image with your SSH public key baked in).
+name: session6
+
+x-server: &server
+  image: session6-ubuntu:24.04
+  pull_policy: never          # built locally by up.sh
+  privileged: true            # systemd, ufw/iptables and timedatectl need this
+  cgroup: private
+  tmpfs:
+    - /run
+    - /run/lock
+    - /tmp
+  restart: unless-stopped
+
+services:
+  web1:
+    <<: *server
+    container_name: web1
+    hostname: web1
+    networks:
+      session6-net:
+        ipv4_address: 172.30.0.11
+
+  web2:
+    <<: *server
+    container_name: web2
+    hostname: web2
+    networks:
+      session6-net:
+        ipv4_address: 172.30.0.12
+
+networks:
+  session6-net:
+    name: session6-net
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

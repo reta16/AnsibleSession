@@ -1,0 +1,72 @@
+---
+# Extra C: a "real-world style" playbook. Don't run it - ask an AI to explain it,
+# then verify its explanations yourself.
+- name: Prepare servers for an app release
+  hosts: web
+  become: true
+  vars:
+    app_users:
+      alice: { shell: /bin/bash, sudo: true }
+      bob: { shell: /bin/sh, sudo: false }
+    min_free_mb: 500
+
+  pre_tasks:
+    - name: Refuse to run on unsupported systems
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_major_version'] | int >= 22
+        fail_msg: "Only Ubuntu 22.04+ is supported"
+
+  tasks:
+    - name: Check free disk space on /
+      ansible.builtin.set_fact:
+        root_free_mb: "{{ (ansible_facts['mounts'] | selectattr('mount', 'equalto', '/') | first).size_available // 1048576 }}"
+
+    - name: Stop if the disk is nearly full
+      ansible.builtin.fail:
+        msg: "Only {{ root_free_mb }} MB free on {{ inventory_hostname }}"
+      when: root_free_mb | int < min_free_mb
+
+    - name: Create app users
+      ansible.builtin.user:
+        name: "{{ item.key }}"
+        shell: "{{ item.value.shell }}"
+        groups: "{{ 'sudo' if item.value.sudo else omit }}"
+        append: true
+      loop: "{{ app_users | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Deploy with automatic rollback
+      block:
+        - name: Download the release
+          ansible.builtin.get_url:
+            url: https://example.com/releases/app-1.2.3.tar.gz
+            dest: /tmp/app.tar.gz
+            mode: "0644"
+            timeout: 10
+      rescue:
+        - name: Log the failure
+          ansible.builtin.debug:
+            msg: "Download failed on {{ inventory_hostname }}, keeping the current version"
+      always:
+        - name: Clean up temp files
+          ansible.builtin.file:
+            path: /tmp/app.tar.gz
+            state: absent
+
+    - name: Announce the release once (not once per server)
+      ansible.builtin.debug:
+        msg: "Release prepared on {{ ansible_play_hosts | length }} servers"
+      run_once: true
+
+    - name: Wait until nginx answers
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}/"
+      register: health
+      until: health.status == 200
+      retries: 10
+      delay: 5
+      delegate_to: localhost
+      become: false

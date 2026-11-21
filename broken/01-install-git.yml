@@ -1,0 +1,11 @@
+---
+# Broken playbook 1: should install git on the web servers
+- name: Install git
+  hosts: web
+  become: true
+
+  tasks:
+    - name: Install git
+      ansible.builtin.apt:
+      name: git
+      state: present

@@ -1,0 +1,11 @@
+---
+# Broken playbook 3: should install the 'tree' command on the web servers
+- name: Install tree
+  hosts: web
+
+  tasks:
+    - name: Install tree
+      ansible.builtin.apt:
+        name: tree
+        state: present
+        update_cache: true

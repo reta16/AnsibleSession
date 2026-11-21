@@ -1,0 +1,25 @@
+---
+# Extra B: update the homepage one server at a time.
+- name: Rolling update of the homepage
+  hosts: web
+  become: true
+  serial: 1          # one host at a time; try "50%" too
+
+  tasks:
+    - name: Update the homepage
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <h1>{{ inventory_hostname }}</h1>
+          <p>Rolling update at {{ now(utc=true).isoformat() }}</p>
+          <p>Managed by Ansible</p>
+        mode: "0644"
+      tags: page
+
+    - name: Check the server still answers before moving to the next one
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}/"
+        status_code: 200
+      delegate_to: localhost
+      become: false
+      tags: check

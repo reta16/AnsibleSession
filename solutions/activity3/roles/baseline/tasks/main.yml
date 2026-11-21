@@ -1,0 +1,66 @@
+---
+# A small security / consistency baseline every server gets.
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name: "{{ baseline_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Set the timezone
+  community.general.timezone:
+    name: "{{ baseline_timezone }}"
+
+- name: Create the admin user
+  ansible.builtin.user:
+    name: "{{ baseline_admin_user }}"
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+
+- name: Harden SSH (no root login, no passwords)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      # Managed by Ansible (baseline role)
+      PermitRootLogin no
+      PasswordAuthentication no
+      X11Forwarding no
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart ssh
+
+# Firewall ORDER MATTERS: allow SSH *before* turning the firewall on,
+# or Ansible locks itself out of the server.
+- name: Firewall - allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Firewall - allow other ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item | string }}"
+    proto: tcp
+  loop: "{{ baseline_firewall_ports }}"
+
+- name: Firewall - deny everything else incoming, then enable
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+# Activity 3 Vault: only runs once you've created the encrypted vault file.
+- name: Write the application secrets file
+  ansible.builtin.copy:
+    dest: /etc/demo-app.env
+    content: "API_KEY={{ vault_app_api_key }}\n"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true   # keep the secret out of the Ansible output and Jenkins logs
+  when: vault_app_api_key is defined

@@ -1,0 +1,89 @@
+// Activity 4: lint -> syntax check -> deploy with Ansible -> smoke test
+//
+// Jenkins credentials this pipeline expects (Manage Jenkins > Credentials > System > Global):
+//   aws-access-key-id       Secret text                     access key of IAM user jenkins-session6
+//   aws-secret-access-key   Secret text                     its secret key
+//   ec2-ssh-key             SSH Username with private key   username 'ubuntu', key = contents of session6-key.pem
+//   ansible-vault-pass      Secret text                     your Activity 3 vault password
+//
+// Copy to the repo root:  cp solutions/activity4/Jenkinsfile .
+
+pipeline {
+    agent any
+
+    // Jenkins on your VM isn't reachable from GitHub, so it checks GitHub
+    // for new commits every 2 minutes instead of waiting for a webhook.
+    // (The trigger only starts working after the first manual "Build Now".)
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'ap-southeast-1'
+        INVENTORY          = 'inventory/aws_ec2.yml'
+        ANSIBLE_FORCE_COLOR = 'true'
+    }
+
+    stages {
+        stage('Lint') {
+            steps {
+                sh 'yamllint .'
+                sh 'ansible-lint site.yml'
+            }
+        }
+
+        stage('Syntax check') {
+            steps {
+                // 'localhost,' is a throwaway inventory: syntax check doesn't need real servers
+                sh 'ansible-playbook -i localhost, site.yml --syntax-check'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+                    string(credentialsId: 'ansible-vault-pass',    variable: 'ANSIBLE_VAULT_PASSWORD')
+                ]) {
+                    // Single quotes: the shell expands $SSH_KEY etc., not Groovy,
+                    // so secrets never appear in the Groovy string.
+                    sh '''
+                        chmod +x scripts/vault-pass-from-env.sh
+                        echo "Servers found by the dynamic inventory:"
+                        ansible-inventory -i "$INVENTORY" --graph --vault-password-file scripts/vault-pass-from-env.sh
+                        ansible-playbook -i "$INVENTORY" site.yml \
+                          --private-key "$SSH_KEY" -u "$SSH_USER" \
+                          --vault-password-file scripts/vault-pass-from-env.sh
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke test') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                    string(credentialsId: 'ansible-vault-pass',    variable: 'ANSIBLE_VAULT_PASSWORD')
+                ]) {
+                    sh '''
+                        ansible-playbook -i "$INVENTORY" smoke-test.yml \
+                          --vault-password-file scripts/vault-pass-from-env.sh
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo 'Deployed and verified. Open your servers in the browser.' }
+        failure { echo 'Pipeline failed - read the first red error in the stage that failed.' }
+    }
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ site_title }}</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.5; }
+    .tag { color: #666; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>{{ site_title }}</h1>
+  <p>{{ site_message }}</p>
+  <ul>
+    <li>Server: <strong>{{ inventory_hostname }}</strong> ({{ ansible_facts['default_ipv4']['address'] }})</li>
+    <li>OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}</li>
+    <li>Owner: {{ site_owner }}</li>
+  </ul>
+  <p class="tag">Managed by Ansible. Manual edits will be overwritten.</p>
+</body>
+</html>

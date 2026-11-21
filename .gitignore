@@ -1,0 +1,10 @@
+# Never commit keys or passwords
+*.pem
+.vault_pass
+*.vault_pass
+
+# Machine-specific IPs
+inventory/hosts.ini
+
+*.retry
+__pycache__/

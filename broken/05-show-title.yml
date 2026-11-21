@@ -1,0 +1,10 @@
+---
+# Broken playbook 5: should print the site title from group_vars
+- name: Show the site title
+  hosts: web
+  gather_facts: false
+
+  tasks:
+    - name: Print the title
+      ansible.builtin.debug:
+        msg: {{ site_title }}

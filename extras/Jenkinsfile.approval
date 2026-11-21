@@ -1,0 +1,60 @@
+// Extra D: deploy to web1 ("staging"), wait for a human, then deploy to web2 ("production").
+// Copy over your Jenkinsfile:  cp extras/Jenkinsfile.approval Jenkinsfile
+pipeline {
+    agent any
+
+    triggers { pollSCM('H/2 * * * *') }
+    options  { disableConcurrentBuilds() }
+
+    environment {
+        AWS_DEFAULT_REGION = 'ap-southeast-1'
+        INVENTORY = 'inventory/aws_ec2.yml'
+    }
+
+    stages {
+        stage('Lint') {
+            steps {
+                sh 'yamllint .'
+                sh 'ansible-lint site.yml'
+            }
+        }
+
+        stage('Deploy to staging (web1)') {
+            steps { script { deploy('web1') } }
+        }
+
+        stage('Approval') {
+            steps {
+                // The build pauses here. Click the build > "Deploy to production" to continue.
+                timeout(time: 15, unit: 'MINUTES') {
+                    input message: 'web1 looks good? Deploy to production (web2)?', ok: 'Deploy to production'
+                }
+            }
+        }
+
+        stage('Deploy to production (web2)') {
+            steps { script { deploy('web2') } }
+        }
+    }
+}
+
+// Reusable deploy step: same command as Activity 4, limited to one host
+def deploy(String target) {
+    withCredentials([
+        string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+        sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+        string(credentialsId: 'ansible-vault-pass',    variable: 'ANSIBLE_VAULT_PASSWORD')
+    ]) {
+        withEnv(["TARGET=${target}"]) {
+            sh '''
+                chmod +x scripts/vault-pass-from-env.sh
+                ansible-playbook -i "$INVENTORY" site.yml --limit "$TARGET" \
+                  --private-key "$SSH_KEY" -u "$SSH_USER" \
+                  --vault-password-file scripts/vault-pass-from-env.sh
+                ansible-playbook -i "$INVENTORY" smoke-test.yml --limit "$TARGET" \
+                  --vault-password-file scripts/vault-pass-from-env.sh
+            '''
+        }
+    }
+}

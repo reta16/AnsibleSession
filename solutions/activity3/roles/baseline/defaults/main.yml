@@ -1,0 +1,14 @@
+# Default values for the baseline role
+baseline_timezone: "Asia/Manila"
+
+baseline_admin_user: "deploy"
+
+baseline_packages:
+  - curl
+  - htop
+  - tree
+  - ufw
+
+# Ports opened in the host firewall (SSH is always allowed)
+baseline_firewall_ports:
+  - 80
